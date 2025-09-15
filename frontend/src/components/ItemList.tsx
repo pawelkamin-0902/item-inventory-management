@@ -1,17 +1,22 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { getItems, removeItem } from "../api/items";
 import type { Item } from "../api/items";
 import ItemCard from "./ItemCard";
 import ItemForm from "./ItemForm";
 import ConfirmModal from "./ConfirmModal";
+import { useNotification } from "../hooks/useNotification";
+import { ANIMATION_CONFIG } from "../constants";
 
 export default function ItemList() {
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; item: Item | null }>({
     isOpen: false,
     item: null
   });
+  
+  const { notification, showNotification, hideNotification } = useNotification();
 
   const load = useCallback(async () => {
     try {
@@ -29,9 +34,7 @@ export default function ItemList() {
   const updateItemQuantity = useCallback((itemId: number, newQuantity: number) => {
     setItems(prevItems => 
       prevItems.map(item => 
-        item.id === itemId 
-          ? { ...item, quantity: newQuantity }
-          : item
+        item.id === itemId ? { ...item, quantity: newQuantity } : item
       )
     );
   }, []);
@@ -41,7 +44,7 @@ export default function ItemList() {
   }, []);
 
   const addItemToList = useCallback((newItem: Item) => {
-    setItems(prevItems => [...prevItems, newItem]);
+    setItems(prevItems => [newItem, ...prevItems]);
   }, []);
 
   const handleDeleteClick = useCallback((item: Item) => {
@@ -51,22 +54,31 @@ export default function ItemList() {
   const handleDeleteConfirm = useCallback(async () => {
     if (!deleteModal.item) return;
     
+    const itemToDelete = deleteModal.item;
+    setDeleteLoading(true);
+    
     try {
-      // Optimistic update - remove from UI immediately
-      removeItemFromList(deleteModal.item.id);
-      // Then sync with server
-      await removeItem(deleteModal.item.id);
-      setDeleteModal({ isOpen: false, item: null });
+      await removeItem(itemToDelete.id);
+      removeItemFromList(itemToDelete.id);
+      showNotification('success', `"${itemToDelete.name}" deleted successfully`);
     } catch (error) {
-      console.error('Failed to delete item:', error);
-      // On error, we would need to reload the full list
-      // For now, we'll just log the error
+      console.error('Delete error:', error);
+      showNotification('error', `Failed to delete "${itemToDelete.name}"`);
+    } finally {
+      setDeleteModal({ isOpen: false, item: null });
+      setDeleteLoading(false);
     }
   }, [deleteModal.item, removeItemFromList]);
 
   const handleDeleteCancel = useCallback(() => {
     setDeleteModal({ isOpen: false, item: null });
   }, []);
+
+  // Memoized stats calculation
+  const stats = useMemo(() => ({
+    totalQuantity: items.reduce((sum, item) => sum + item.quantity, 0),
+    rarityTypes: new Set(items.map(item => item.rarity)).size
+  }), [items]);
 
   useEffect(() => {
     load();
@@ -125,6 +137,20 @@ export default function ItemList() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
+      {/* Notification */}
+      {notification && (
+        <div className={`fixed top-4 right-4 z-50 px-4 py-2 rounded-lg shadow-lg ${
+          notification.type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+        }`}>
+          <div className="flex items-center justify-between">
+            <span className="text-sm">{notification.message}</span>
+            <button onClick={hideNotification} className="ml-2 text-white hover:text-gray-200">
+              ×
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Add Item Form */}
       <div className="fade-in">
         <ItemForm onAdded={addItemToList} />
@@ -144,7 +170,7 @@ export default function ItemList() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {items.map((item, index) => (
-            <div key={item.id} className="fade-in" style={{ animationDelay: `${index * 0.1}s` }}>
+            <div key={item.id} className="fade-in" style={{ animationDelay: `${index * ANIMATION_CONFIG.FADE_DELAY}s` }}>
               <ItemCard 
                 item={item} 
                 onQuantityUpdate={updateItemQuantity}
@@ -164,15 +190,11 @@ export default function ItemList() {
               <div className="text-sm text-gray-600">Total Items</div>
             </div>
             <div>
-              <div className="text-2xl font-bold text-green-600">
-                {items.reduce((sum, item) => sum + item.quantity, 0)}
-              </div>
+              <div className="text-2xl font-bold text-green-600">{stats.totalQuantity}</div>
               <div className="text-sm text-gray-600">Total Quantity</div>
             </div>
             <div>
-              <div className="text-2xl font-bold text-purple-600">
-                {new Set(items.map(item => item.rarity)).size}
-              </div>
+              <div className="text-2xl font-bold text-purple-600">{stats.rarityTypes}</div>
               <div className="text-sm text-gray-600">Rarity Types</div>
             </div>
           </div>
@@ -189,7 +211,7 @@ export default function ItemList() {
         confirmText="Delete"
         cancelText="Cancel"
         type="danger"
-        loading={false}
+        loading={deleteLoading}
       />
     </div>
   );
