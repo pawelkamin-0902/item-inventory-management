@@ -1,7 +1,7 @@
 <?php
 namespace Inventory;
 
-use Spiral\GRPC\Context;
+use Spiral\RoadRunner\GRPC\Context;
 
 interface ItemServiceInterface
 {

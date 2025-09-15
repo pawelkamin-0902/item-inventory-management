@@ -152,6 +152,97 @@ valorbyte-inventory/
 ### gRPC API
 - `GetItemById` - Get item by ID (high-performance)
 
+## 🔧 gRPC Server Testing
+
+### Prerequisites for gRPC Testing
+- **grpcurl** - Command-line tool for gRPC testing
+- **Protocol Buffers** - For proto file compilation
+
+### Install grpcurl
+```bash
+# Windows (using Chocolatey)
+choco install grpcurl
+
+# macOS (using Homebrew)
+brew install grpcurl
+
+# Linux
+# Download from: https://github.com/fullstorydev/grpcurl/releases
+```
+
+### Start gRPC Server
+```bash
+cd backend
+./rr.exe serve -c rr.yaml
+```
+
+### Test gRPC Service
+
+1. **List available services:**
+   ```bash
+   grpcurl -plaintext localhost:9001 list
+   ```
+
+2. **List service methods:**
+   ```bash
+   grpcurl -plaintext localhost:9001 list inventory.ItemService
+   ```
+
+3. **Test GetItemById method:**
+   ```bash
+   grpcurl -plaintext -proto protos/item.proto -d '{"id": 1}' localhost:9001 inventory.ItemService.GetItemById
+   ```
+
+4. **Expected response:**
+   ```json
+   {
+     "id": 1,
+     "name": "Test Sword",
+     "type": "weapon",
+     "rarity": "common",
+     "quantity": 1
+   }
+   ```
+
+### gRPC Server Configuration
+
+The gRPC server is configured in `rr.yaml`:
+```yaml
+grpc:
+  listen: "tcp://0.0.0.0:9001"
+  proto:
+    - "protos/item.proto"
+  workers:
+    command: "php worker.php"
+    pool:
+      num_workers: 2
+```
+
+### gRPC Service Implementation
+
+The gRPC service is implemented in:
+- **Proto Definition**: `protos/item.proto`
+- **Service Interface**: `app/Grpc/Generated/Inventory/ItemServiceInterface.php`
+- **Service Implementation**: `app/Grpc/ItemServiceGrpc.php`
+- **Worker Registration**: `worker.php`
+
+### Troubleshooting gRPC Issues
+
+1. **Server not starting:**
+   - Check if port 9001 is available
+   - Verify `rr.yaml` configuration
+   - Check PHP syntax in worker files
+
+2. **Method not found:**
+   - Ensure protobuf files are generated: `protoc --php_out=app/Grpc/Generated protos/item.proto`
+   - Regenerate autoloader: `composer dump-autoload`
+   - Verify service registration in `worker.php`
+
+3. **Connection refused:**
+   - Ensure RoadRunner server is running
+   - Check firewall settings for port 9001
+   - Verify server logs for errors
+
 ## 🎨 UI Components
 
 ### ItemCard
@@ -266,5 +357,3 @@ For support and questions:
 - [ ] Mobile app (React Native)
 
 ---
-
-**Built with ❤️ using Laravel, React, and modern web technologies.**

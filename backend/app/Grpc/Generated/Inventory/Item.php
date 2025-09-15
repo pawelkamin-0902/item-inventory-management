@@ -27,6 +27,8 @@ class Item extends \Google\Protobuf\Internal\Message
      */
     protected $type = '';
     /**
+     * string label for convenience
+     *
      * Generated from protobuf field <code>string rarity = 4;</code>
      */
     protected $rarity = '';
@@ -45,6 +47,7 @@ class Item extends \Google\Protobuf\Internal\Message
      *     @type string $name
      *     @type string $type
      *     @type string $rarity
+     *           string label for convenience
      *     @type int $quantity
      * }
      */
@@ -120,6 +123,8 @@ class Item extends \Google\Protobuf\Internal\Message
     }
 
     /**
+     * string label for convenience
+     *
      * Generated from protobuf field <code>string rarity = 4;</code>
      * @return string
      */
@@ -129,6 +134,8 @@ class Item extends \Google\Protobuf\Internal\Message
     }
 
     /**
+     * string label for convenience
+     *
      * Generated from protobuf field <code>string rarity = 4;</code>
      * @param string $var
      * @return $this
